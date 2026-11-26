@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" content="#0d1017" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="时间记录员" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+<title>时间记录员</title>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot" id="netDot"></span>
+      <span>时间记录员</span>
+    </div>
+    <div class="date-nav">
+      <button class="nav-btn" id="prevDay" aria-label="前一天">‹</button>
+      <button class="date-label" id="dateLabel">今天</button>
+      <button class="nav-btn" id="nextDay" aria-label="后一天">›</button>
+    </div>
+    <button class="icon-btn" id="menuBtn" aria-label="更多">⋯</button>
+  </header>
+
+  <main>
+    <section class="now-card" id="nowCard"></section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>现在在做什么</h2>
+        <button class="ghost-btn" id="addProjectBtn">＋ 新项目</button>
+      </div>
+      <div class="project-grid" id="projectGrid"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2 id="summaryTitle">今日汇总</h2>
+        <div class="seg" id="viewSeg">
+          <button data-view="day" class="on">日</button>
+          <button data-view="week">周</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="dayTotal">—</div>
+        <div class="pie-wrap">
+          <canvas id="pieCanvas"></canvas>
+        </div>
+        <div class="legend" id="pieLegend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="barTitle">一天的时间分布</div>
+        <div class="chart-hint" id="barHint">点柱子看某一小时的明细</div>
+        <canvas id="barCanvas" class="bar-canvas"></canvas>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>记录明细</h2>
+        <button class="ghost-btn" id="addManualBtn">＋ 补录</button>
+      </div>
+      <div class="log-list" id="logList"></div>
+    </section>
+
+    <p class="footnote">数据存在这台手机上 · 断网也能用 · 可选同步到你的 GitHub</p>
+  </main>
+</div>
+
+<!-- 新项目 -->
+<dialog id="projectDialog">
+  <form method="dialog" class="dialog-body" id="projectForm">
+    <h3>新建项目</h3>
+    <label class="field">
+      <span>名称</span>
+      <input id="projectName" type="text" maxlength="12" placeholder="例如：写代码" autocomplete="off" />
+    </label>
+    <label class="field">
+      <span>图标</span>
+      <input id="projectEmoji" type="text" maxlength="4" placeholder="📚" autocomplete="off" />
+    </label>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn-ghost" type="button" id="projectCancel">取消</button>
+      <button value="ok" class="btn-primary" type="submit">创建</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 补录 -->
+<dialog id="manualDialog">
+  <form method="dialog" class="dialog-body" id="manualForm">
+    <h3>补录一段</h3>
+    <label class="field">
+      <span>项目</span>
+      <select id="manualProject"></select>
+    </label>
+    <div class="field-row">
+      <label class="field">
+        <span>开始</span>
+        <input id="manualStart" type="time" step="60" />
+      </label>
+      <label class="field">
+        <span>结束</span>
+        <input id="manualEnd" type="time" step="60" />
+      </label>
+    </div>
+    <p class="hint" id="manualHint">结束时间早于开始时间时，按跨过午夜计算。</p>
+    <div class="dialog-actions">
+      <button class="btn-ghost" type="button" id="manualCancel">取消</button>
+      <button class="btn-primary" type="submit">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 设置 -->
+<dialog id="menuDialog">
+  <div class="dialog-body">
+    <h3>设置</h3>
+    <button class="menu-row" id="syncSettingsBtn">
+      <span>同步设置</span><span class="row-sub" id="syncStateText">未开启</span>
+    </button>
+    <button class="menu-row" id="syncNowBtn">立即同步</button>
+    <button class="menu-row" id="installBtn" hidden>安装到桌面</button>
+    <button class="menu-row" id="exportBtn">导出备份（JSON）</button>
+    <button class="menu-row" id="importBtn">导入备份</button>
+    <button class="menu-row danger" id="clearBtn">清空全部记录</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden />
+    <p class="hint" id="lastSyncHint">数据只存在这台手机上。</p>
+    <div class="dialog-actions">
+      <button class="btn-primary" id="menuClose" type="button">关闭</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- 同步设置 -->
+<dialog id="syncDialog">
+  <div class="dialog-body">
+    <h3>同步设置</h3>
+    <p class="hint">把记录同步到你自己的 GitHub 私有 Gist。不填也完全可用，只是数据只在本机。</p>
+    <label class="field">
+      <span>访问令牌（只勾 gist 权限）</span>
+      <input id="tokenInput" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false" />
+    </label>
+    <label class="field">
+      <span>Gist ID（一般留空即可）</span>
+      <input id="gistInput" type="text" placeholder="留空会自动找到已有的一份，没有就新建" autocomplete="off" spellcheck="false" />
+    </label>
+    <p class="hint" id="syncDialogHint"></p>
+    <button class="link-btn" id="syncClear" type="button">清除同步设置（数据仍留在本机）</button>
+    <div class="dialog-actions">
+      <button class="btn-ghost" id="syncCancel" type="button">取消</button>
+      <button class="btn-primary" id="syncSave" type="button">保存并同步</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
